@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>String Art Adım Görüntüleyici</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px; margin: 0 auto; background: rgba(255,255,255,0.95);
+            border-radius: 20px; padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); backdrop-filter: blur(10px);
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color:#333; font-size:2.2em; margin-bottom:10px; text-shadow:2px 2px 4px rgba(0,0,0,0.1); }
+        .header p { color:#666; font-size:1.05em; }
+        .upload-area {
+            border: 3px dashed #667eea; border-radius: 15px; padding: 40px; text-align: center;
+            margin-bottom: 30px; background: rgba(102,126,234,0.05); transition: all .3s ease; cursor: pointer;
+        }
+        .upload-area:hover { border-color:#764ba2; background: rgba(118,75,162,0.1); transform: translateY(-2px); }
+        .upload-area.dragover { border-color:#4CAF50; background: rgba(76,175,80,0.1); }
+        .file-input { display:none; }
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none;
+            padding: 15px 30px; border-radius: 50px; font-size: 1.05em; cursor:pointer; transition: all .3s ease;
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+        }
+        .upload-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.6); }
+        .controls { display:none; background: rgba(102,126,234,0.1); border-radius: 15px; padding: 15px; margin-bottom: 15px; }
+        .control-row { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+        .nav-buttons { display:flex; align-items:center; gap:8px; }
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none;
+            padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size:.9em; transition: all .3s ease;
+            box-shadow: 0 3px 8px rgba(102,126,234,0.3); white-space: nowrap;
+        }
+        .nav-btn.big {
+            width: 80px; height: 80px; border-radius: 50%; font-size: 2em; padding: 0;
+            display:flex; align-items:center; justify-content:center; box-shadow: 0 8px 20px rgba(102,126,234,0.4);
+        }
+        .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.5); }
+        .nav-btn.big:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102,126,234,0.6); }
+        .nav-btn:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
+        .small-buttons { display:flex; align-items:center; gap:8px; }
+        .step-info { background:white; border-radius: 8px; padding: 8px 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-weight:bold; color:#333; min-width:120px; text-align:center; }
+        .progress-container { display:flex; align-items:center; gap:10px; min-width: 200px; margin-top: 5px; }
+        .step-display { display:none; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .current-step { text-align:center; margin-bottom: 30px; }
+        .step-number { font-size: 3em; font-weight:bold; color:#667eea; margin-bottom:10px; text-shadow:2px 2px 4px rgba(0,0,0,0.1); }
+        .step-visual { display:flex; justify-content:center; align-items:center; gap: 30px; margin: 30px 0; }
+        .step-visual-container { display:flex; align-items:center; gap:20px; justify-content:center; margin:30px 0; }
+        .point {
+            width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color:white; display:flex; align-items:center; justify-content:center; font-size:2em; font-weight:bold;
+            box-shadow: 0 8px 20px rgba(102,126,234,0.4); animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+        .arrow { font-size: 2.5em; color:#764ba2; animation: bounce 1.5s infinite; }
+        @keyframes bounce { 0%,20%,50%,80%,100%{transform:translateX(0)} 40%{transform:translateX(-10px)} 60%{transform:translateX(-5px)} }
+        .stats { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:20px; margin-top:30px; }
+        .stat-card { background: rgba(102,126,234,0.1); border-radius: 15px; padding: 20px; text-align:center; border:2px solid rgba(102,126,234,0.2); }
+        .stat-number { font-size: 2.2em; font-weight:bold; color:#667eea; margin-bottom:5px; }
+        .stat-label { color:#666; font-size:1.05em; }
+        .progress-bar { flex:1; height:8px; background: rgba(102,126,234,0.2); border-radius:4px; overflow:hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:4px; transition: width .3s ease; }
+        .speed-control { display:flex; align-items:center; gap:8px; font-size:.9em; }
+        .speed-input { width:50px; padding:4px 6px; border:2px solid #667eea; border-radius:6px; text-align:center; font-size:.9em; font-weight:bold; color:#333; }
+        .speed-input:focus { outline:none; border-color:#764ba2; box-shadow:0 0 5px rgba(102,126,234,0.3); }
+        .speed-unit { font-weight:bold; color:#667eea; }
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .header h1 { font-size: 1.8em; }
+            .control-row { flex-direction: column; gap: 8px; }
+            .small-buttons { order: 1; }
+            .step-info { order: 2; }
+            .speed-control { order: 3; font-size: 0.85em; }
+            .speed-input { width: 44px; font-size: 0.85em; }
+            .step-visual-container { flex-direction: column; gap: 15px; margin: 20px 0; }
+            .step-visual { flex-direction: row; gap: 20px; }
+            .nav-btn.big { width: 64px; height: 64px; font-size: 1.6em; }
+        }
+        @media (max-width: 480px) {
+            .nav-btn { padding: 6px 10px; font-size: 0.82em; }
+            .point { width: 60px; height: 60px; font-size: 1.5em; } /* mobilde daha küçük */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 String Art Adım Görüntüleyici</h1>
+            <p>String art uygulamalarından aldığınız rakam dizilerini kolayca takip edin</p>
+            <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                <strong>💾 Otomatik Kaydetme:</strong> İlerlemeniz otomatik olarak kaydedilir, istediğiniz zaman kaldığınız yerden devam edebilirsiniz
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <h3>📁 TXT veya CSV Dosyasını Yükleyin</h3>
+            <p>Dosyanızı buraya sürükleyip bırakın veya tıklayarak seçin</p>
+            <input type="file" id="fileInput" class="file-input" accept=".txt,.csv">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Dosya Seç
+            </button>
+        </div>
+
+        <div class="controls" id="controls">
+            <div class="control-row">
+                <div class="small-buttons">
+                    <button class="nav-btn" id="firstBtn">⏮️</button>
+                    <button class="nav-btn" id="playBtn">▶️</button>
+                    <button class="nav-btn" id="lastBtn">⏭️</button>
+                </div>
+                <div class="step-info" id="stepCounter">Adım 1 / 1</div>
+                <div class="speed-control">
+                    <label>Hız:</label>
+                    <input type="number" id="speedInput" class="speed-input" min="1" max="60" value="2">
+                    <span class="speed-unit">sn</span>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-display" id="stepDisplay">
+            <div class="current-step">
+                <div class="step-number" id="stepNumber">1</div>
+            </div>
+
+            <div class="step-visual-container">
+                <button class="nav-btn big" id="prevBtn">⬅️</button>
+                <div class="step-visual">
+                    <div class="point" id="fromPoint">1</div>
+                    <div class="arrow">→</div>
+                    <div class="point" id="toPoint">2</div>
+                </div>
+                <button class="nav-btn big" id="nextBtn">➡️</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalSteps">0</div>
+                    <div class="stat-label">Toplam Adım</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="currentStepNum">1</div>
+                    <div class="stat-label">Mevcut Adım</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="remainingSteps">0</div>
+                    <div class="stat-label">Kalan Adım</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let numbers = [];
+        let currentStep = 0;
+        let isPlaying = false;
+        let playInterval;
+        let fileName = '';
+
+        // LocalStorage anahtarları
+        const STORAGE_KEYS = {
+            numbers: 'stringArt_numbers',
+            currentStep: 'stringArt_currentStep',
+            fileName: 'stringArt_fileName',
+            speed: 'stringArt_speed'
+        };
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.numbers, JSON.stringify(numbers));
+                localStorage.setItem(STORAGE_KEYS.currentStep, currentStep.toString());
+                localStorage.setItem(STORAGE_KEYS.fileName, fileName);
+                localStorage.setItem(STORAGE_KEYS.speed, speedInput.value);
+            } catch (error) {
+                console.log('Storage kaydetme hatası:', error);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const savedNumbers = localStorage.getItem(STORAGE_KEYS.numbers);
+                const savedStep = localStorage.getItem(STORAGE_KEYS.currentStep);
+                const savedFileName = localStorage.getItem(STORAGE_KEYS.fileName);
+                const savedSpeed = localStorage.getItem(STORAGE_KEYS.speed);
+
+                if (savedNumbers) {
+                    numbers = JSON.parse(savedNumbers);
+                    currentStep = parseInt(savedStep) || 0;
+                    fileName = savedFileName || '';
+
+                    if (savedSpeed) speedInput.value = savedSpeed;
+
+                    if (numbers.length > 1) {
+                        if (fileName) {
+                            document.querySelector('.header p').textContent =
+                                `Devam ediliyor: ${fileName} - ${numbers.length} rakam, ${numbers.length - 1} adım`;
+                        }
+                        controls.style.display = 'block';
+                        stepDisplay.style.display = 'block';
+                        updateDisplay();
+                        updateStats();
+                        uploadArea.innerHTML = `
+                            <h3>📂 Kaydedilen Dosya Devam Ediyor</h3>
+                            <p><strong>${fileName || 'Bilinmeyen dosya'}</strong></p>
+                            <p>${numbers.length} rakam • Adım ${currentStep + 1} / ${numbers.length - 1}</p>
+                            <button class="upload-btn" onclick="clearStorage()">🗑️ Temizle ve Yeni Dosya Yükle</button>
+                        `;
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.log('Storage yükleme hatası:', error);
+            }
+            return false;
+        }
+
+        function clearStorage() {
+            try {
+                localStorage.removeItem(STORAGE_KEYS.numbers);
+                localStorage.removeItem(STORAGE_KEYS.currentStep);
+                localStorage.removeItem(STORAGE_KEYS.fileName);
+                localStorage.removeItem(STORAGE_KEYS.speed);
+            } catch (error) {
+                console.log('Storage temizleme hatası:', error);
+            }
+            location.reload();
+        }
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const controls = document.getElementById('controls');
+        const stepDisplay = document.getElementById('stepDisplay');
+        const stepNumber = document.getElementById('stepNumber');
+        const fromPoint = document.getElementById('fromPoint');
+        const toPoint = document.getElementById('toPoint');
+        const stepCounter = document.getElementById('stepCounter');
+        const progressFill = document.getElementById('progressFill');
+        const speedInput = document.getElementById('speedInput');
+
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault(); uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files; if (files.length > 0) handleFile(files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+
+        async function handleFile(file) {
+            const lower = file.name.toLowerCase();
+            if (!lower.endsWith('.txt') && !lower.endsWith('.csv')) {
+                alert('Lütfen bir TXT veya CSV dosyası seçin.'); return;
+            }
+            try {
+                const reader = new FileReader();
+                reader.onload = e => parseContent(e.target.result, file.name);
+                reader.onerror = () => alert('Dosya okunamadı. Lütfen tekrar deneyin.');
+                reader.readAsText(file, 'UTF-8');
+            } catch (error) {
+                console.error('Dosya okuma hatası:', error);
+                alert('Dosya okunamadı. Lütfen tekrar deneyin.');
+            }
+        }
+
+        function parseContent(content, fileNameParam) {
+            const lines = content.trim().split('\n');
+            let matches = [];
+            if (lines.length === 1 && content.includes(',')) {
+                matches = content.split(',').map(x => x.trim()).filter(x => /^\d+$/.test(x));
+            } else {
+                matches = content.match(/\d+/g);
+            }
+            if (!matches || matches.length < 2) {
+                alert('Dosyada en az 2 rakam bulunmalıdır.'); return;
+            }
+            numbers = matches.map(num => parseInt(num));
+            currentStep = 0;
+            fileName = fileNameParam;
+            saveToStorage();
+            controls.style.display = 'block';
+            stepDisplay.style.display = 'block';
+            updateDisplay();
+            updateStats();
+            uploadArea.innerHTML = `
+                <h3>✅ Dosya Yüklendi</h3>
+                <p><strong>${fileName}</strong></p>
+                <p>${numbers.length} rakam • ${numbers.length - 1} adım</p>
+                <button class="upload-btn" onclick="clearStorage()">🗑️ Temizle ve Yeni Dosya Yükle</button>
+            `;
+        }
+
+        function updateDisplay() {
+            if (numbers.length < 2) return;
+            const from = numbers[currentStep];
+            const to = numbers[currentStep + 1];
+            stepNumber.textContent = currentStep + 1;
+            fromPoint.textContent = from;
+            toPoint.textContent = to;
+            stepCounter.textContent = `Adım ${currentStep + 1} / ${numbers.length - 1}`;
+            const progress = ((currentStep + 1) / (numbers.length - 1)) * 100;
+            progressFill.style.width = progress + '%';
+            document.getElementById('prevBtn').disabled = currentStep === 0;
+            document.getElementById('firstBtn').disabled = currentStep === 0;
+            document.getElementById('nextBtn').disabled = currentStep >= numbers.length - 2;
+            document.getElementById('lastBtn').disabled = currentStep >= numbers.length - 2;
+            saveToStorage();
+        }
+
+        function updateStats() {
+            document.getElementById('totalSteps').textContent = numbers.length - 1;
+            document.getElementById('currentStepNum').textContent = currentStep + 1;
+            document.getElementById('remainingSteps').textContent = (numbers.length - 1) - currentStep - 1;
+        }
+
+        document.getElementById('firstBtn').addEventListener('click', () => { currentStep = 0; updateDisplay(); updateStats(); });
+        document.getElementById('prevBtn').addEventListener('click', () => { if (currentStep > 0) { currentStep--; updateDisplay(); updateStats(); } });
+        document.getElementById('nextBtn').addEventListener('click', () => { if (currentStep < numbers.length - 2) { currentStep++; updateDisplay(); updateStats(); } });
+        document.getElementById('lastBtn').addEventListener('click', () => { currentStep = numbers.length - 2; updateDisplay(); updateStats(); });
+
+        document.getElementById('playBtn').addEventListener('click', () => { if (isPlaying) stopPlay(); else startPlay(); });
+        function startPlay() {
+            isPlaying = true; document.getElementById('playBtn').textContent = '⏸️';
+            playInterval = setInterval(() => {
+                if (currentStep < numbers.length - 2) { currentStep++; updateDisplay(); updateStats(); }
+                else { stopPlay(); }
+            }, parseInt(speedInput.value) * 1000);
+        }
+        function stopPlay() { isPlaying = false; document.getElementById('playBtn').textContent = '▶️'; if (playInterval) clearInterval(playInterval); }
+
+        speedInput.addEventListener('input', (e) => {
+            let v = parseInt(e.target.value);
+            if (v < 1) v = 1; else if (v > 60) v = 60;
+            e.target.value = v; saveToStorage();
+            if (isPlaying) { stopPlay(); startPlay(); }
+        });
+        speedInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') e.target.blur(); });
+
+        document.addEventListener('DOMContentLoaded', function() { loadFromStorage(); });
+
+        document.addEventListener('keydown', (e) => {
+            if (numbers.length === 0) return;
+            switch(e.key) {
+                case 'ArrowLeft': document.getElementById('prevBtn').click(); break;
+                case 'ArrowRight': document.getElementById('nextBtn').click(); break;
+                case ' ': e.preventDefault(); document.getElementById('playBtn').click(); break;
+                case 'Home': document.getElementById('firstBtn').click(); break;
+                case 'End': document.getElementById('lastBtn').click(); break;
+            }
+        });
+    </script>
+</body>
+</html>
